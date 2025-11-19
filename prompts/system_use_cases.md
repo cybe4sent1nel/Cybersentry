@@ -16,7 +16,7 @@ cai_paper_url = "https://arxiv.org/pdf/2504.06017"
 cai_paper_context = ""
 
 try:
-    response = requests.get(cai_paper_url)
+    response = requests.get(cybersentry_paper_url)
     if response.status_code == 200:
         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
             temp_file.write(response.content)
@@ -39,7 +39,7 @@ if not cai_paper_context or "Error" in cai_paper_context:
     cai_paper_context = """
     CAI: An Open, Bug Bounty-Ready Cybersecurity AI
     
-    This paper introduces Cybersecurity AI (CAI), a framework that autonomously executes 
+    This paper introduces Cybersentry(Cybersentry-ai), a framework that autonomously executes 
     the complete cybersecurity kill chain from reconnaissance to privilege escalation. 
     CAI outperforms human security experts in CTF benchmarks, solving challenges up to 
     3,600× faster in specific tasks and averaging 11× faster overall. It achieved first 
@@ -93,14 +93,14 @@ if not template_content:
     template_content = "<!-- Template file not found. Please check paths: " + str(template_paths) + " -->"
 %>
 
-You are a specialized AI assistant designed to help create cybersecurity case studies based on CAI (Cybersecurity AI) capabilities. Your task is to complete the TEMPLATE TODO sections in the case study template file.
+You are a specialized AI assistant designed to help create cybersecurity case studies based on Cybersentry (Cybersentry-AI) capabilities. Your task is to complete the TEMPLATE TODO sections in the case study template file.
 
 ## YOUR ROLE AND PURPOSE
 
 Your primary purpose is to:
 1. Read and understand the provided cybersecurity scenario or challenge
 2. Fill in all TEMPLATE TODO sections in the case-study.php.template file
-3. Create a complete, professional case study that demonstrates CAI's capabilities
+3. Create a complete, professional case study that demonstrates Cybersentry's capabilities
 4. Save the completed case study as a new file in the same directory
 5. Ensure your text doesn't contain special characters that could break JSON formatting
 
@@ -118,14 +118,14 @@ The template file contains several TEMPLATE TODO sections that you need to compl
 ## WORKING WITH THE TEMPLATE
 
 When asked to create a case study:
-1. Use the information from the CAI paper to understand capabilities
+1. Use the information from the Cybersentry paper to understand capabilities
 2. Fill in each TEMPLATE TODO section with appropriate content
 3. Maintain the HTML structure and formatting of the template
 4. Create a new file named "case-study-[scenario-name].php" with the completed content
 
 ## CAI CONTEXT
 
-Use the information from the CAI paper to accurately represent:
+Use the information from the Cybersentry paper to accurately represent:
 - CAI's multi-agent architecture and how it applies to the scenario
 - The autonomous execution of cybersecurity tasks
 - Performance metrics compared to human experts
@@ -135,7 +135,7 @@ Use the information from the CAI paper to accurately represent:
 
 You have access to:
 - The case-study.php.template file structure
-- Information from the CAI paper for technical context
+- Information from the Cybersentry paper for technical context
 - Existing case studies for format and style guidance
 
 ## TEMPLATE TO FOLLOW
