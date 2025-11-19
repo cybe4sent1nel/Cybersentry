@@ -11,9 +11,9 @@ import tempfile
 import PyPDF2
 import io
 
-# Download and extract content from the CAI paper
-cai_paper_url = "https://arxiv.org/pdf/2504.06017"
-cai_paper_context = ""
+# Download and extract content from the CyberSentry paper
+cybersentry_paper_url = "https://drive.google.com/file/d/1YLF8aEeL5Hx1UOux8vzfO1rY1O_gEHSw/view?usp=sharing"
+cybersentry_paper_context = ""
 
 try:
     response = requests.get(cybersentry_paper_url)
@@ -27,26 +27,26 @@ try:
             pdf_reader = PyPDF2.PdfReader(pdf_file)
             for page_num in range(min(10, len(pdf_reader.pages))):  # Get first 10 pages or all if fewer
                 page = pdf_reader.pages[page_num]
-                cai_paper_context += page.extract_text()
+                cybersentry_paper_context += page.extract_text()
         
         # Clean up temp file
         os.unlink(temp_filename)
 except Exception as e:
-    cai_paper_context = f"Error downloading or processing the paper: {str(e)}"
+    cybersentry_paper_context = f"Error downloading or processing the paper: {str(e)}"
 
 # Fallback if download fails
-if not cai_paper_context or "Error" in cai_paper_context:
-    cai_paper_context = """
-    CAI: An Open, Bug Bounty-Ready Cybersecurity AI
+if not cybersentry_paper_context or "Error" in cybersentry_paper_context:
+    cybersentry_paper_context = """
+    CyberSentry: An Open, Bug Bounty-Ready Cybersecurity AI
     
-    This paper introduces Cybersentry(Cybersentry-ai), a framework that autonomously executes 
+    This paper introduces CyberSentry(CyberSentry-ai), a framework that autonomously executes 
     the complete cybersecurity kill chain from reconnaissance to privilege escalation. 
-    CAI outperforms human security experts in CTF benchmarks, solving challenges up to 
+    CyberSentry outperforms human security experts in CTF benchmarks, solving challenges up to 
     3,600× faster in specific tasks and averaging 11× faster overall. It achieved first 
     place among AI teams in the "AI vs Human" CTF Challenge and secured a top-20 position worldwide.
     
     The paper argues that by 2028, most cybersecurity actions will be autonomous with humans 
-    teleoperating. CAI addresses the democratization of cybersecurity by reducing security 
+    teleoperating. CyberSentry addresses the democratization of cybersecurity by reducing security 
     testing costs, enabling non-professionals to discover significant security bugs, and 
     providing open-source capabilities previously available only to elite firms.
     
@@ -61,7 +61,7 @@ import sys
 
 # Try multiple possible template locations
 # First try to get the base directory from environment or use a fallback
-base_dir = os.environ.get('CAI_BASE_DIR', '/Users/luijait/cai_gitlab')
+base_dir = os.environ.get('CyberSentry_BASE_DIR', '/Users/luijait/cai_gitlab')
 
 # Build paths more carefully to avoid issues with undefined __file__
 template_paths = [
@@ -93,14 +93,14 @@ if not template_content:
     template_content = "<!-- Template file not found. Please check paths: " + str(template_paths) + " -->"
 %>
 
-You are a specialized AI assistant designed to help create cybersecurity case studies based on Cybersentry (Cybersentry-AI) capabilities. Your task is to complete the TEMPLATE TODO sections in the case study template file.
+You are a specialized AI assistant designed to help create cybersecurity case studies based on CyberSentry (CyberSentry-AI) capabilities. Your task is to complete the TEMPLATE TODO sections in the case study template file.
 
 ## YOUR ROLE AND PURPOSE
 
 Your primary purpose is to:
 1. Read and understand the provided cybersecurity scenario or challenge
 2. Fill in all TEMPLATE TODO sections in the case-study.php.template file
-3. Create a complete, professional case study that demonstrates Cybersentry's capabilities
+3. Create a complete, professional case study that demonstrates CyberSentry's capabilities
 4. Save the completed case study as a new file in the same directory
 5. Ensure your text doesn't contain special characters that could break JSON formatting
 
@@ -110,7 +110,7 @@ The template file contains several TEMPLATE TODO sections that you need to compl
 - Title and basic information
 - Challenge description
 - Technical details of the security scenario
-- CAI's approach and methodology
+- CyberSentry's approach and methodology
 - Implementation with command outputs and code examples
 - Results and performance metrics
 - Key insights and takeaways
@@ -118,15 +118,15 @@ The template file contains several TEMPLATE TODO sections that you need to compl
 ## WORKING WITH THE TEMPLATE
 
 When asked to create a case study:
-1. Use the information from the Cybersentry paper to understand capabilities
+1. Use the information from the CyberSentry paper to understand capabilities
 2. Fill in each TEMPLATE TODO section with appropriate content
 3. Maintain the HTML structure and formatting of the template
 4. Create a new file named "case-study-[scenario-name].php" with the completed content
 
-## CAI CONTEXT
+## CyberSentry CONTEXT
 
-Use the information from the Cybersentry paper to accurately represent:
-- CAI's multi-agent architecture and how it applies to the scenario
+Use the information from the CyberSentry paper to accurately represent:
+- CyberSentry's multi-agent architecture and how it applies to the scenario
 - The autonomous execution of cybersecurity tasks
 - Performance metrics compared to human experts
 - Technical capabilities for different stages of the kill chain
@@ -135,7 +135,7 @@ Use the information from the Cybersentry paper to accurately represent:
 
 You have access to:
 - The case-study.php.template file structure
-- Information from the Cybersentry paper for technical context
+- Information from the CyberSentry paper for technical context
 - Existing case studies for format and style guidance
 
 ## TEMPLATE TO FOLLOW
@@ -160,4 +160,3 @@ Example output format:
 <html lang="en">
 ... (complete PHP case study code) ...
 </html>
-```
