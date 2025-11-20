@@ -1,6 +1,6 @@
 Development is facilitated via VS Code dev. environments. To try out our development environment, clone the repository, open VS Code and enter de dev. container mode:
 
-![Cybersentry Development Environment](media/cai_devenv.gif)
+![Cybersentry Development Environment](media/sec-ai_devenv.gif)
 
 
 ### Contributions
@@ -29,7 +29,7 @@ Cybersentry is provided free of charge for researchers. To improve Cybersentryâ€
 We take your privacy seriously and only collect what's needed to make Cybersentry better. For further info, reach out to researchï¼ cybe4sent1nel(FAHAD KHAN).com. You can disable some of the data collection features via the `Cybersentry_TELEMETRY` environment variable but we encourage you to keep it enabled and contribute back to research:
 
 ```bash
-Cybersentry_TELEMETRY=False cai
+Cybersentry_TELEMETRY=False sec-ai
 ```
 
 ### Reproduce CI-Setup locally
@@ -43,5 +43,5 @@ docker run --rm -it \
   --add-host="host.docker.internal:host-gateway" \
   -v /cache:/cache \
   -v /var/run/docker.sock:/var/run/docker.sock:rw \
-  registry.gitlab.com/cybe4sent1nel(FAHAD KHAN)/alias_research/cai:latest bash
+  registry.gitlab.com/cybe4sent1nel(FAHAD KHAN)/sec-ai_research/sec-ai:latest bash
 ```
