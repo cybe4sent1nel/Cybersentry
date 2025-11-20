@@ -1,19 +1,28 @@
 import streamlit as st
 import os
+import sys # <-- NEW IMPORT
 import asyncio
 import time
-import json
-from rich.console import Console # Used for simulating the CLI context
 from typing import Optional
 
+# --- 0. PATH FIX FOR CLOUD DEPLOYMENT ---
+# This ensures Streamlit can find the Cybersentry source code in the 'src' folder.
+try:
+    current_dir = os.path.dirname(__file__)
+    # Add the project root to the Python path
+    sys.path.insert(0, current_dir)
+    # Add the 'src' directory to the Python path (if structure requires it)
+    sys.path.insert(0, os.path.join(current_dir, 'src')) 
+except Exception as e:
+    # This should not fail in the Streamlit environment
+    print(f"Path insertion failed: {e}") 
+
 # --- 1. CONFIGURE EXTERNAL LIBRARIES AND AGENT PATHS ---
-# Note: You may need to adjust these imports based on your final Cybersentry structure.
+# Note: Removed unused imports (Console, json).
 try:
     # Assuming the Agent classes are accessible via the SDK path
-    # If this fails, you need to ensure your local package is installed with 'pip install -e .'
-    from cybersentry.sdk.agents import Agent, OpenAIChatCompletionsModel, Runner 
+    from cybersentry.sdk.agents import Agent, OpenAIChatCompletionsModel, Runner  
     from cybersentry.agents.one_tool import one_tool_agent # Example Agent Instance
-    # You might also need to initialize LiteLLM settings here, but we rely on ENV vars.
     import litellm
     
     # Define your agent dictionary based on the names the user selects
@@ -26,21 +35,19 @@ try:
     DEFAULT_MODEL = os.getenv('CYBERSENTRY_MODEL', "openrouter/mistralai/mistral-7b-instruct:free")
     
 except ImportError as e:
-    # Fallback structure for development environment issues
+    # Fallback structure for deployment issues
     st.error(f"FATAL ERROR: Could not import necessary Cybersentry modules ({e}).")
-    st.info("Please ensure you have run 'pip install -e .' in your terminal.")
+    st.info("Please ensure your Python path is correctly configured and dependencies are installed.")
     AVAILABLE_AGENTS = {"Error": None}
     DEFAULT_MODEL = "Error Loading Model"
 
 
 # --- 2. ASYNCHRONOUS WRAPPER (The Crucial Fix) ---
 
-# Since Streamlit runs synchronously, we must use asyncio.run() to execute our agent.
 def run_agent_task(agent: Agent, user_input: str, model_name: str, api_key: str) -> str:
     """Safely wraps the agent's asynchronous execution."""
     
     # 1. Update the agent's model dynamically with user-provided settings
-    # This is necessary because Streamlit clears sessions often.
     agent.model.model = model_name
     agent.model.openai_client = litellm.client(api_key=api_key) 
     
@@ -48,15 +55,13 @@ def run_agent_task(agent: Agent, user_input: str, model_name: str, api_key: str)
     async def async_run():
         try:
             # We mock a small runner execution here for simplicity, 
-            # but you would call your actual agent execution logic (Runner.run)
-            st.code(f"Running agent '{agent.name}' with model '{model_name}'...")
-            
-            # Assuming Cybersentry's run signature:
+            # REPLACE THIS BLOCK WITH YOUR ACTUAL AGENT CALL:
             # response = await Runner.run(agent, user_input)
             
-            # --- MOCK RESPONSE FOR DEMO (REPLACE WITH REAL Runner.run CALL) ---
+            # --- MOCK RESPONSE FOR DEMO ---
+            st.code(f"Running agent '{agent.name}' with model '{model_name}'...")
             await asyncio.sleep(3) 
-            response = {"final_output": f"SUCCESS: [MOCK] Agent received input: '{user_input}'. Simulation of {agent.name} is complete."}
+            response = {"final_output": f"SUCCESS: Agent received input: '{user_input}'. Execution time simulated."}
             # --- END MOCK ---
             
             # Process and return the final output
@@ -141,8 +146,8 @@ def main():
         st.success(f"Execution Complete in {duration:.2f} seconds")
         st.subheader("Agent Response:")
         
-        # Try to parse as code block for nice display, otherwise show raw text
-        if result.startswith("Agent Error"):
+        # Display the result
+        if result.startswith("Agent Execution Error"):
             st.error(result)
         else:
             st.code(result, language='text')
