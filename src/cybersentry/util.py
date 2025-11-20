@@ -202,12 +202,16 @@ def signal_handler(signum, frame):
     raise KeyboardInterrupt()
 
 
+# ... (Ensure you have 'import threading' near the top of util.py)
+
 # Register signal handler for CTRL+C
-signal.signal(signal.SIGINT, signal_handler)
+# --- FIX: Only register signals in the main thread (needed for Streamlit/Web)
+if threading.current_thread() is threading.main_thread():
+    signal.signal(signal.SIGINT, signal_handler) 
+# --- END FIX ---
 
 # Register cleanup at exit
 atexit.register(cleanup_all_streaming_resources)
-
 
 def start_active_timer():
     """
