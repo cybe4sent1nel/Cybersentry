@@ -3,140 +3,297 @@ import os
 import sys
 import asyncio
 import time
-from typing import Optional
+import logging
+import warnings
+import random
+from pathlib import Path
+from dotenv import load_dotenv
 
-# --- 0. CRITICAL FIX: PATH INJECTION FOR CLOUD DEPLOYMENT ---
-# This ensures Streamlit's environment can find the 'cybersentry' source code 
-# located in the adjacent 'src' folder, bypassing the installation failure.
-try:
-    current_dir = os.path.dirname(__file__)
-    # Insert the 'src' directory at the beginning of the Python path
-    sys.path.insert(0, os.path.join(current_dir, 'src')) 
-except Exception as e:
-    print(f"Path insertion failed: {e}") 
-# -----------------------------------------------------------
+# ============================================================================
+# 1. SETUP & ENVIRONMENT
+# ============================================================================
 
-# --- 1. CONFIGURE EXTERNAL LIBRARIES AND AGENT PATHS ---
+# Ensure 'src' is in the python path so cybersentry imports work
+current_dir = Path(__file__).parent
+src_path = current_dir / "src"
+if src_path.exists():
+    sys.path.append(str(src_path))
+
+load_dotenv()
+
+# Force Disable Tracing to prevent 401 Errors (from cli.py)
+os.environ["CYBERSENTRY_TRACING"] = "false"
+os.environ["TRACING_ENABLED"] = "false"
+
+# Suppress Warnings (from cli.py)
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="asyncio")
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+warnings.filterwarnings("ignore", message=".*Pydantic serializer warnings.*")
+
+# Configure logging
+logging.basicConfig(level=logging.ERROR)
+
+# ============================================================================
+# 2. CYBERSENTRY IMPORTS
+# ============================================================================
 try:
-    # These imports will now succeed because 'src' is in the path
-    from cybersentry.sdk.agents import Agent, OpenAIChatCompletionsModel, Runner  
-    from cybersentry.agents.one_tool import one_tool_agent # Example Agent Instance
-    import litellm
+    from cybersentry.util import (
+        fix_litellm_transcription_annotations,
+        setup_ctf,
+        is_pentestperf_available,
+        COST_TRACKER
+    )
+    from cybersentry.sdk.agents import Runner, Agent
+    from cybersentry.agents import get_agent_by_name
+    from cybersentry.sdk.agents.simple_agent_manager import AGENT_MANAGER
+    from cybersentry.sdk.agents.global_usage_tracker import GLOBAL_USAGE_TRACKER
+    from cybersentry.sdk.agents.run_to_jsonl import get_session_recorder
     
-    # Define your agent dictionary
-    AVAILABLE_AGENTS = {
-        "CTF Agent (One-Tool)": one_tool_agent,
-        # "Blue Team Agent": blue_team_agent, # Placeholder for other agents
-    }
-    
-    # Get initial model name from ENV (used as default in UI)
-    DEFAULT_MODEL = os.getenv('CYBERSENTRY_MODEL', "openrouter/mistralai/mistral-7b-instruct:free")
+    # Import Patterns dynamically
+    from cybersentry.agents.patterns.bb_triage import bb_triage_swarm_pattern
+    from cybersentry.agents.patterns.offsec import offsec_pattern
+    from cybersentry.agents.patterns.red_blue_team import blue_team_red_team_shared_context_pattern
     
 except ImportError as e:
-    # Fallback structure for failed imports
-    st.error(f"FATAL ERROR: Could not import necessary Cybersentry modules ({e}).")
-    st.info("Ensure your source code is available and dependencies are correct.")
-    AVAILABLE_AGENTS = {"Error": None}
-    DEFAULT_MODEL = "Error Loading Model"
+    st.error(f"Critical Import Error: {e}. Please ensure 'src' directory is present and dependencies are installed.")
+    st.stop()
 
+# ============================================================================
+# 3. UTILITY FUNCTIONS (Ported from CLI)
+# ============================================================================
 
-# --- 2. ASYNCHRONOUS WRAPPER (The Crucial Fix) ---
-
-def run_agent_task(agent: Agent, user_input: str, model_name: str, api_key: str) -> str:
-    """Safely wraps the agent's asynchronous execution."""
+def update_agent_models_recursively(agent, new_model, visited=None):
+    """Recursively update model for agent and handoffs."""
+    if visited is None:
+        visited = set()
     
-    # 1. Update the agent's model dynamically
-    agent.model.model = model_name
-    agent.model.openai_client = litellm.client(api_key=api_key) 
+    if hasattr(agent, "name") and agent.name in visited:
+        return
+    if hasattr(agent, "name"):
+        visited.add(agent.name)
     
-    # 2. Define the main asynchronous operation
-    async def async_run():
+    if hasattr(agent, "model") and hasattr(agent.model, "model"):
+        agent.model.model = new_model
+        # Reset client to force recreation
+        if hasattr(agent.model, "_client"):
+            agent.model._client = None
+            
+    if hasattr(agent, "handoffs"):
+        for handoff_item in agent.handoffs:
+            if hasattr(handoff_item, "model"):
+                update_agent_models_recursively(handoff_item, new_model, visited)
+
+CYBER_PHRASES = [
+    "Decrypting your intentions...", "Scanning for vulnerabilities...",
+    "Bypassing confusion firewalls...", "Brute-forcing solution space...",
+    "Injecting intelligence...", "Performing pentesting analysis...",
+    "Escalating privileges...", "Cracking cryptographic puzzles...",
+    "Exploiting knowledge bases...", "Reverse engineering query...",
+    "Executing zero-day strategy...", "Fuzzing for optimal solutions...",
+    "Deploying persistent answers...", "Hacking through your questions...",
+]
+
+def get_random_status():
+    return random.choice(CYBER_PHRASES)
+
+# ============================================================================
+# 4. STREAMLIT UI SETUP
+# ============================================================================
+
+st.set_page_config(
+    page_title="CyberSentry Interface",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for Terminal Look
+st.markdown("""
+<style>
+    .stApp {
+        background-color: #0e1117;
+        color: #00ff41;
+    }
+    div.stButton > button {
+        background-color: #003300;
+        color: #00ff41;
+        border: 1px solid #00ff41;
+    }
+    div.stButton > button:hover {
+        background-color: #00ff41;
+        color: #000000;
+    }
+    .stTextInput > div > div > input {
+        color: #00ff41;
+        background-color: #000000;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================================
+# 5. SESSION STATE MANAGEMENT
+# ============================================================================
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "session_initialized" not in st.session_state:
+    # One-time setup
+    fix_litellm_transcription_annotations()
+    session_logger = get_session_recorder()
+    GLOBAL_USAGE_TRACKER.start_session(session_id=session_logger.session_id, agent_name=None)
+    st.session_state.session_initialized = True
+
+if "current_agent_object" not in st.session_state:
+    st.session_state.current_agent_object = None
+
+# ============================================================================
+# 6. SIDEBAR CONFIGURATION
+# ============================================================================
+
+with st.sidebar:
+    st.title("🛡️ CyberSentry")
+    st.caption("Advanced Security Agent Interface")
+
+    # --- Mode Selection ---
+    mode = st.radio("Operation Mode", ["Single Agent", "Pattern / Swarm"])
+
+    selected_agent_obj = None
+    selected_agent_name = ""
+
+    if mode == "Single Agent":
+        # List based on files provided
+        available_agents = [
+            "one_tool",
+            "red_teamer",
+            "blue_teamer",
+            "bug_bounter",
+            "codeagent",
+            "dfir",
+            "android_sast_agent",
+            "memory_analysis_agent",
+            "network_traffic_analyzer",
+            "replay_attack_agent",
+            "reporter",
+            "retester",
+            "reverse_engineering_agent",
+            "subghz_sdr_agent",
+            "wifi_security_tester"
+        ]
+        selected_agent_key = st.selectbox("Select Agent", available_agents, index=0)
+        
+        # Load the agent logic
         try:
-            # --- REPLACE THIS BLOCK WITH YOUR REAL AGENT CALL ---
-            # You must replace this with the actual Runner.run() call from your SDK
-            
-            st.code(f"Running agent '{agent.name}' with model '{model_name}'...")
-            await asyncio.sleep(3) 
-            response = {"final_output": f"SUCCESS: [MOCK] Agent received input: '{user_input}'. Execution simulated."}
-            # --- END MOCK ---
-            
-            return response.get("final_output", "Agent finished, but no output found.")
-            
+            selected_agent_obj = get_agent_by_name(selected_agent_key, agent_id="StreamlitUser")
+            selected_agent_name = getattr(selected_agent_obj, "name", selected_agent_key)
         except Exception as e:
-            return f"Agent Execution Error: {str(e)}"
-    
-    # 3. Execute the asynchronous code synchronously
-    return asyncio.run(async_run())
+            st.error(f"Failed to load agent: {e}")
 
+    else:
+        # Patterns from uploaded files
+        patterns = {
+            "Bug Bounty Swarm (Triage)": bb_triage_swarm_pattern,
+            "Offensive Security Ops": offsec_pattern,
+            "Red/Blue Team (Shared Context)": blue_team_red_team_shared_context_pattern
+        }
+        selected_pattern_key = st.selectbox("Select Pattern", list(patterns.keys()))
+        selected_agent_obj = patterns[selected_pattern_key]
+        selected_agent_name = selected_pattern_key
 
-# --- 3. STREAMLIT UI LAYOUT ---
-
-def main():
-    st.set_page_config(layout="wide", page_title="Cybersentry Agent Framework")
-    st.title("🛡️ Cybersentry Agent Web Interface")
+    # --- Model Configuration ---
     st.markdown("---")
-
-    # --- SIDEBAR: Configuration Inputs ---
-    with st.sidebar:
-        st.header("1. Authentication")
-        api_key = st.text_input(
-            "OpenRouter/OpenAI API Key (PAT)", 
-            type="password", 
-            help="Required for LiteLLM to connect to the model provider."
-        )
-        st.info("Your key will be used as the OPENAI_API_KEY.")
-
-        st.header("2. Agent & Model Selection")
-        
-        selected_agent_name = st.selectbox(
-            "Select Agent Persona:",
-            list(AVAILABLE_AGENTS.keys()),
-            key='agent_select',
-            index=0
-        )
-        selected_agent = AVAILABLE_AGENTS.get(selected_agent_name)
-
-        model_name = st.text_input(
-            "LiteLLM Model ID:",
-            DEFAULT_MODEL,
-            help="Must support Chat Completions API. e.g., openrouter/openai/gpt-3.5-turbo",
-            key='model_input'
-        )
-        
-        st.markdown("---")
-        st.caption("Rate Limits (Currently set via ENV variables):")
-        st.caption(f"RPM: {os.getenv('LITELLM_MAX_RPM', '40')} | TPM: {os.getenv('LITELLM_MAX_TPM', '80000')}")
-
-    # --- MAIN CONTENT: Execution Area ---
-    st.header(f"Agent: {selected_agent_name}")
-    st.markdown("---")
-
-    user_prompt = st.text_area(
-        "Enter your cybersecurity command or challenge:",
-        key='prompt_input',
-        height=150
+    current_model = st.text_input(
+        "Model ID", 
+        value=os.getenv("CYBERSENTRY_MODEL", "cybe4sent1nel0"),
+        help="E.g., openrouter/mistralai/mistral-7b-instruct:free"
     )
 
-    if st.button("Run Agent Execution", use_container_width=True, disabled=not api_key):
-        if not api_key:
-            st.warning("Please enter your API Key/PAT to run the agent.")
-            return
+    # --- Session Stats ---
+    st.markdown("---")
+    st.subheader("Session Stats")
+    cost = COST_TRACKER.session_total_cost
+    st.metric("Total Cost", f"${cost:.6f}")
+    
+    # --- CTF Status ---
+    if is_pentestperf_available():
+        st.success("🚩 CTF Environment Detected")
+        if st.button("Reset CTF"):
+            setup_ctf()
+            st.toast("CTF Environment Reset!")
 
-        st.info("Initiating autonomous agent execution... Please wait.")
-        
-        with st.spinner("Analyzing environment and executing strategy..."):
-            
-            start_time = time.time()
-            result = run_agent_task(selected_agent, user_prompt, model_name, api_key)
-            duration = time.time() - start_time
-            
-        st.success(f"Execution Complete in {duration:.2f} seconds")
-        st.subheader("Agent Response:")
-        
-        if result.startswith("Agent Execution Error"):
-            st.error(result)
-        else:
-            st.code(result, language='text')
+    if st.button("Clear Chat History", type="primary"):
+        st.session_state.messages = []
+        st.rerun()
 
-if __name__ == "__main__":
-    main()
+# ============================================================================
+# 7. MAIN CHAT LOGIC
+# ============================================================================
+
+st.subheader(f"Active: {selected_agent_name}")
+
+# Display Chat History
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Chat Input
+if prompt := st.chat_input("Enter command or prompt..."):
+    # 1. Add User Message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # 2. Prepare Agent
+    if selected_agent_obj:
+        # Update model if changed
+        update_agent_models_recursively(selected_agent_obj, current_model)
+        
+        # Switch Agent Manager Context
+        # (Ideally we reset registry or handle switching, simplified here for Streamlit)
+        AGENT_MANAGER.switch_to_single_agent(selected_agent_obj, selected_agent_name)
+
+        # 3. Execute Agent (Async wrapper)
+        async def run_async_step():
+            try:
+                # Run the agent
+                result = await Runner.run(selected_agent_obj, prompt)
+                return result
+            except Exception as e:
+                return f"Error executing agent: {str(e)}"
+
+        # 4. Display "Thinking" UI
+        with st.chat_message("assistant"):
+            status_text = get_random_status()
+            with st.status(status_text, expanded=True) as status:
+                st.write("Initializing agent runtime...")
+                st.write(f"Target Model: {current_model}")
+                
+                # Run the async loop
+                start_time = time.time()
+                response_obj = asyncio.run(run_async_step())
+                duration = time.time() - start_time
+                
+                status.update(label=f"Completed in {duration:.2f}s", state="complete", expanded=False)
+
+            # 5. Parse and Display Output
+            final_text = ""
+            if hasattr(response_obj, "final_output"):
+                final_text = response_obj.final_output
+            elif isinstance(response_obj, str):
+                final_text = response_obj
+            else:
+                final_text = str(response_obj)
+            
+            st.markdown(final_text)
+            
+            # Add to history
+            st.session_state.messages.append({"role": "assistant", "content": final_text})
+            
+            # Force a rerun to update cost in sidebar
+            st.rerun()
+    else:
+        st.error("No agent selected or failed to load agent.")
+
+# Footer / Credits
+st.markdown("---")
+st.caption(f"CyberSentry Web Interface | Developer: cybe4sent1nel | CWD: {os.getcwd()}")
