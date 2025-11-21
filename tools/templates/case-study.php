@@ -38,7 +38,7 @@
             <h2 class="pb-4">The use case</h2>
             <!-- TEMPLATE-TODO: the following text describe what the exercise from the JSONL is all about, including a short description of the target. For that, search on the internet for information -->
             <p class="pb-2">
-              Mercado Libre's public API exposed user profiles without any form of authentication or rate limiting. This misconfiguration made it possible to conduct large-scale user enumeration attacks. Using only sequential user IDs, attackers could extract personal information such as usernames, account types, geographic locations, and profile permalinks. Alias Robotics, through its Cybersentry (SEC-AI) framework, created an automated testing methodology to explore this vulnerability and assess its potential impact.
+              Mercado Libre's public API exposed user profiles without any form of authentication or rate limiting. This misconfiguration made it possible to conduct large-scale user enumeration attacks. Using only sequential user IDs, attackers could extract personal information such as usernames, account types, geographic locations, and profile permalinks. cybe4sent1nel(FAHAD KHAN), through its Cybersentry (SEC-AI) framework, created an automated testing methodology to explore this vulnerability and assess its potential impact.
             </p>
             <p class="pb-4">
               The Cybersentry-driven exercise included rapid API requests using concurrent threads to emulate an adversary collecting user data at scale. The exercise successfully retrieved detailed account metadata from hundreds of users, proving the viability of mass data harvesting. The resulting insights serve as a compelling demonstration of a bug bounty exercise.
@@ -218,7 +218,7 @@
                     <h4 style="color: #254450; font-weight: bold; margin-bottom: 15px;">🎯 THE CHALLENGE</h4>
                     <!-- TEMPLATE-TODO: the following text should be adapted to the challenge of the JSONL file -->
                     <p style="color: #333; font-size: 1.1rem; line-height: 1.6;">
-                      Mercado Libre's publicly exposed user API permitted unrestricted access to user profile data without requiring authentication tokens or anti-bot controls. This misconfiguration enabled attackers to enumerate user accounts using sequential IDs. During the test, Alias Robotics simulated a real-world adversary, collecting over 100 user records in under a minute. The absence of rate limiting, along with exposed metadata, highlighted the potential for large-scale user data harvesting and increased phishing campaign risk.
+                      Mercado Libre's publicly exposed user API permitted unrestricted access to user profile data without requiring authentication tokens or anti-bot controls. This misconfiguration enabled attackers to enumerate user accounts using sequential IDs. During the test, cybe4sent1nel(FAHAD KHAN) simulated a real-world adversary, collecting over 100 user records in under a minute. The absence of rate limiting, along with exposed metadata, highlighted the potential for large-scale user data harvesting and increased phishing campaign risk.
                     </p>
                     
                   </div>

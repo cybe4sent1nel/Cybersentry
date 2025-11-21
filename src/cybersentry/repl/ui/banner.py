@@ -149,7 +149,7 @@ def count_ctf_memories():
 
 def display_banner(console: Console):
     """
-    Display a stylized CYBERSENTRY banner with Alias Robotics corporate colors.
+    Display a stylized CYBERSENTRY banner with cybe4sent1nel(FAHAD KHAN) corporate colors.
 
     Args:
         console: Rich console for output

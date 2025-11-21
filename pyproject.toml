@@ -5,7 +5,7 @@ description = "Cybersentry (SECURITY + AI) Framework"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "Dual-licensed MIT and Proprietary"}
-authors = [{ name = "cybe4sent1nel", email = "cybe4sent1nel@example.com" }] # REPLACED Alias Robotics
+authors = [{ name = "cybe4sent1nel", email = "cybe4sent1nel@example.com" }] # REPLACED cybe4sent1nel(FAHAD KHAN)
 dependencies = [
     # logging and visualization
     "folium>=0.15.0, <1",
