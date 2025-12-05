@@ -1,3 +1,4 @@
+[![TryHackMe Badge](https://tryhackme-badges.s3.amazonaws.com/fahadkhanxyz8816.png)](https://tryhackme.com/p/fahadkhanxyz8816)
 # Cybersentry
 # 🛡️ Cybersentry
 
